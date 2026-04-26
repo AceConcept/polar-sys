@@ -77,7 +77,7 @@ export function renderAnomaly() {
   const grid = cards
     .map(
       (c) => `
-      <button type="button" class="anomaly-card" data-card-id="${c.id}">
+      <button type="button" class="anomaly-card${c.id === '8846' ? ' anomaly-card--to-incident' : ' anomaly-card--static'}" data-card-id="${c.id}">
         <div class="anomaly-card-top">
           <span class="anomaly-card-source">
             <span class="db-pill">${dbIcon}<span class="db-pill-host">${c.host}</span></span>
@@ -105,7 +105,7 @@ export function renderAnomaly() {
         <div class="page-title-row">
           <h1 class="page-title page-title-anomaly">Anomaly Detection</h1>
           <span class="title-chip">Leo 2.0Y</span>
-          <a class="btn btn-dark page-title-cta" href="#/monitor"><span class="page-title-cta-icon" aria-hidden="true">${trimSvg(iconPerformScan)}</span><span>Perform Scan</span></a>
+          <button type="button" class="btn btn-dark page-title-cta"><span class="page-title-cta-icon" aria-hidden="true">${trimSvg(iconPerformScan)}</span><span>Perform Scan</span></button>
         </div>
       </div>
       <div class="search-row">
@@ -125,7 +125,7 @@ export function renderAnomaly() {
   `;
 
   return shell({
-    crumb: 'Leo2.0Y - Automated Threat Correlation Engine / Anomaly Detection',
+    crumb: { mode: 'standard', trail: 'Anomaly Detection' },
     content,
     activeNav: 'network',
   });
@@ -137,8 +137,6 @@ export function attachAnomalyHandlers(root) {
       const id = btn.getAttribute('data-card-id');
       if (id === '8846') {
         window.location.hash = '#/incident';
-      } else {
-        window.location.hash = '#/monitor';
       }
     });
   });

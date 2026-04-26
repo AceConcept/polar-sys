@@ -4,13 +4,20 @@ import iconDropdownArrow from '../icons/incident-page/dropdown-arrow.svg?raw';
 import iconFilter from '../icons/SearchBarRow/filter-icon.svg?raw';
 import tapeRingUrl from '../icons/incident-page/pvBtn_k.png?url';
 
-/** Square side (rem) for the rotating tape image; red node is sized from this. */
-const DB_CORE_TAPE_BOX_REM = 5.25;
+/** Square side (rem) for the rotating tape image; red node is sized from this. 85px at 16px root. */
+const DB_CORE_TAPE_BOX_REM = 5.3125;
 /**
  * Red fill: circumference = this × (π × tape box side) — i.e. diameter = scale × tape box.
  * Tune to match the PNG inner opening (smaller = tighter to the ring hole).
  */
 const DB_CORE_RED_CIRCUMFERENCE_SCALE = 0.62;
+
+/**
+ * Optical centering nudge for the tape PNG (applied before rotation). Same units as SVG lengths
+ * (e.g. `0`, `1px`, `0.0625rem`). Adjust if the ring looks off-center while spinning.
+ */
+const DB_CORE_TAPE_IMAGE_NUDGE_X = '0';
+const DB_CORE_TAPE_IMAGE_NUDGE_Y = '0';
 
 export function renderIncident() {
   const dbCoreTapeHalfRem = DB_CORE_TAPE_BOX_REM / 2;
@@ -157,6 +164,7 @@ export function renderIncident() {
                 y="-${dbCoreTapeHalfRem}rem"
                 width="${DB_CORE_TAPE_BOX_REM}rem"
                 height="${DB_CORE_TAPE_BOX_REM}rem"
+                transform="translate(${DB_CORE_TAPE_IMAGE_NUDGE_X} ${DB_CORE_TAPE_IMAGE_NUDGE_Y})"
                 preserveAspectRatio="xMidYMid meet"
               />
             </g>
@@ -202,9 +210,12 @@ export function renderIncident() {
   `;
 
   return shell({
-    crumb: 'Leo2.0Y - Automated Threat Correlation Engine / Anomaly Detection',
+    crumb: {
+      mode: 'incident',
+      caseTitle: '#8846 — DNS Loop & Port Scan Correlation',
+    },
     content,
-    activeNav: 'incidents',
+    activeNav: 'network',
   });
 }
 
