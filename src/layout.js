@@ -20,20 +20,103 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;');
 }
 
-function formatCrumb(crumbText) {
-  const raw = String(crumbText);
+/** Shown in the first segment (full product line); incident view truncates in the UI. */
+const TOPBAR_ENGINE_LEAD = 'Leo2.0Y - Automated Threat Correlation Engine';
+
+function leadTruncated(lead) {
+  const t = String(lead);
+  if (t.length <= 10) return t;
+  return `${t.slice(0, 10)}...`;
+}
+
+/**
+ * Breadcrumb: `string` (legacy "A / B") or
+ * - `{ mode: 'standard', trail }` — full engine lead + `trail` (e.g. Anomaly Detection, monitor)
+ * - `{ mode: 'incident', caseTitle }` — truncated lead (hover) + link to anomaly + case title
+ * - `{ mode: 'incidentSubpage', caseTitle, pageTitle }` — incident trail + current subpage
+ */
+function formatCrumb(crumb) {
+  if (crumb && typeof crumb === 'object' && 'mode' in crumb) {
+    if (crumb.mode === 'incident') {
+      const short = leadTruncated(TOPBAR_ENGINE_LEAD);
+      return `
+<nav class="topbar-breadcrumb" aria-label="Breadcrumb">
+  <ol class="topbar-breadcrumb__list">
+    <li class="topbar-breadcrumb__item">
+      <span class="crumb-segment crumb-segment--engine crumb-segment--trunc" title="${escapeHtml(
+        TOPBAR_ENGINE_LEAD,
+      )}">${escapeHtml(short)}</span>
+    </li>
+    <li class="topbar-breadcrumb__sep" aria-hidden="true">/</li>
+    <li class="topbar-breadcrumb__item">
+      <a class="crumb-segment crumb-segment--link" href="#/anomaly">Anomaly Detection</a>
+    </li>
+    <li class="topbar-breadcrumb__sep" aria-hidden="true">/</li>
+    <li class="topbar-breadcrumb__item" aria-current="page">
+      <span class="crumb-segment">${escapeHtml(String(crumb.caseTitle))}</span>
+    </li>
+  </ol>
+</nav>`.trim();
+    }
+    if (crumb.mode === 'incidentSubpage') {
+      const short = leadTruncated(TOPBAR_ENGINE_LEAD);
+      return `
+<nav class="topbar-breadcrumb" aria-label="Breadcrumb">
+  <ol class="topbar-breadcrumb__list">
+    <li class="topbar-breadcrumb__item">
+      <span class="crumb-segment crumb-segment--engine crumb-segment--trunc" title="${escapeHtml(
+        TOPBAR_ENGINE_LEAD,
+      )}">${escapeHtml(short)}</span>
+    </li>
+    <li class="topbar-breadcrumb__sep" aria-hidden="true">/</li>
+    <li class="topbar-breadcrumb__item">
+      <a class="crumb-segment crumb-segment--link" href="#/anomaly">Anomaly Detection</a>
+    </li>
+    <li class="topbar-breadcrumb__sep" aria-hidden="true">/</li>
+    <li class="topbar-breadcrumb__item">
+      <a class="crumb-segment crumb-segment--link" href="#/incident">${escapeHtml(String(crumb.caseTitle))}</a>
+    </li>
+    <li class="topbar-breadcrumb__sep" aria-hidden="true">/</li>
+    <li class="topbar-breadcrumb__item" aria-current="page">
+      <span class="crumb-segment">${escapeHtml(String(crumb.pageTitle))}</span>
+    </li>
+  </ol>
+</nav>`.trim();
+    }
+    if (crumb.mode === 'standard') {
+      return formatStandardBreadcrumb(escapeHtml(TOPBAR_ENGINE_LEAD), escapeHtml(String(crumb.trail || '')));
+    }
+  }
+  const raw = String(crumb);
   const m = raw.match(/^(.+?)\s*\/\s*(.+)$/);
   if (m) {
-    const lead = escapeHtml(m[1].trim());
-    const tail = escapeHtml(m[2].trim());
-    return `<span class="crumb"><span class="crumb-lead">${lead} / </span><span class="crumb-accent">${tail}</span></span>`;
+    return formatStandardBreadcrumb(escapeHtml(m[1].trim()), escapeHtml(m[2].trim()));
   }
   return `<span class="crumb crumb-plain">${escapeHtml(raw)}</span>`;
 }
 
+function formatStandardBreadcrumb(leadHtml, trailHtml) {
+  return `
+<nav class="topbar-breadcrumb" aria-label="Breadcrumb">
+  <ol class="topbar-breadcrumb__list">
+    <li class="topbar-breadcrumb__item">
+      <span class="crumb-segment crumb-segment--engine">${leadHtml}</span>
+    </li>
+    <li class="topbar-breadcrumb__sep" aria-hidden="true">/</li>
+    <li class="topbar-breadcrumb__item" aria-current="page">
+      <span class="crumb-segment crumb-segment--current">${trailHtml}</span>
+    </li>
+  </ol>
+</nav>`.trim();
+}
+
 export function sidebar(active = 'network') {
-  const item = (href, ic, label, key) =>
-    `<a class="nav-item ${active === key ? 'active' : ''}" href="${href}">${ic}<span>${label}</span></a>`;
+  const item = (ic, label, key) =>
+    `<span class="nav-item ${active === key ? 'active' : ''}">${ic}<span>${label}</span></span>`;
+
+  /** Only sidebar navigation target: return to Anomaly Detection. Same markup on every page. */
+  const networkMonitorLink = (ic, label, key) =>
+    `<a class="nav-item ${active === key ? 'active' : ''}" href="#/anomaly">${ic}<span>${label}</span></a>`;
 
   return `
     <aside class="sidebar">
@@ -42,24 +125,24 @@ export function sidebar(active = 'network') {
         <span class="brand-name">Polor Systems</span>
       </div>
       <nav class="nav-primary" aria-label="Primary">
-        ${item('#/anomaly', navSvg(iconHome), 'Home', 'home')}
-        ${item('#/', navSvg(iconIncidentReport), 'Incident Reports', 'incidents')}
-        ${item('#/anomaly', navSvg(iconNetworkManager), 'Network Monitoring', 'network')}
-        ${item('#/', navSvg(iconAuditNotes), 'Audit Logs', 'audit')}
-        ${item('#/', navSvg(iconCompliance), 'Compliance Dashboard', 'compliance')}
-        ${item('#/', navSvg(iconSettings), 'Settings', 'settings')}
+        ${item(navSvg(iconHome), 'Home', 'home')}
+        ${item(navSvg(iconIncidentReport), 'Incident Reports', 'incidents')}
+        ${networkMonitorLink(navSvg(iconNetworkManager), 'Network Monitoring', 'network')}
+        ${item(navSvg(iconAuditNotes), 'Audit Logs', 'audit')}
+        ${item(navSvg(iconCompliance), 'Compliance Dashboard', 'compliance')}
+        ${item(navSvg(iconSettings), 'Settings', 'settings')}
       </nav>
       <div class="sidebar-footer">
         <nav class="nav-footer" aria-label="Secondary">
-          ${item('#/', navSvg(iconContactUs), 'Contact Us', 'contact')}
-          ${item('#/', navSvg(iconDocumentation), 'Documentation', 'docs')}
+          ${item(navSvg(iconContactUs), 'Contact Us', 'contact')}
+          ${item(navSvg(iconDocumentation), 'Documentation', 'docs')}
         </nav>
         <div class="legal">
-          <a href="#">Changelog</a>
+          <span class="legal-link">Changelog</span>
           <span class="legal-dash" aria-hidden="true"></span>
-          <a href="#">Privacy</a>
+          <span class="legal-link">Privacy</span>
           <span class="legal-dash" aria-hidden="true"></span>
-          <a href="#">Terms</a>
+          <span class="legal-link">Terms</span>
         </div>
       </div>
     </aside>

@@ -224,7 +224,11 @@ export function renderMonitor() {
   `;
 
   return shell({
-    crumb: 'Leo2.0Y - Automated Threat Correlation Engine / Anomaly Detection',
+    crumb: {
+      mode: 'incidentSubpage',
+      caseTitle: '#8846 — DNS Loop & Port Scan Correlation',
+      pageTitle: 'Server Telemetry',
+    },
     content,
     activeNav: 'network',
   });
