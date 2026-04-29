@@ -2,9 +2,9 @@ import { shell } from '../layout.js';
 import iconPerformScan from '../icons/button-icons/grain.svg?raw';
 import iconDropdownArrow from '../icons/incident-page/dropdown-arrow.svg?raw';
 import iconFilter from '../icons/SearchBarRow/filter-icon.svg?raw';
-import tapeRingUrl from '../icons/incident-page/pvBtn_k.png?url';
+import tapeRingUrl from '../icons/incident-page/circle_v2.png?url';
 
-/** Square side (rem) for the rotating tape image; red node is sized from this. 85px at 16px root. */
+/** Square side (rem) for the rotating ring image; red node is sized from this. 85px at 16px root. */
 const DB_CORE_TAPE_BOX_REM = 5.3125;
 /**
  * Red fill: circumference = this × (π × tape box side) — i.e. diameter = scale × tape box.
@@ -13,7 +13,7 @@ const DB_CORE_TAPE_BOX_REM = 5.3125;
 const DB_CORE_RED_CIRCUMFERENCE_SCALE = 0.62;
 
 /**
- * Optical centering nudge for the tape PNG (applied before rotation). Same units as SVG lengths
+ * Optical centering nudge for the ring PNG (applied before rotation). Same units as SVG lengths
  * (e.g. `0`, `1px`, `0.0625rem`). Adjust if the ring looks off-center while spinning.
  */
 const DB_CORE_TAPE_IMAGE_NUDGE_X = '0';
