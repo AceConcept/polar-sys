@@ -17,6 +17,8 @@ function fitArtboard() {
   const scale = Math.min(sx, sy);
 
   board.style.transform = `scale(${scale})`;
+  /* Inverse so 1 CSS px borders stay ~1 device px after zoom-style scaling (same factor as transform). */
+  board.style.setProperty('--artboard-scale', String(scale));
   const w = Math.ceil(WIDTH * scale) + 8;
   const h = Math.ceil(HEIGHT * scale) + 8;
   frame.style.width = `${w}px`;

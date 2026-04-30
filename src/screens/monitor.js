@@ -2,8 +2,45 @@ import { shell } from '../layout.js';
 import iconDropdownArrow from '../icons/incident-page/dropdown-arrow.svg?raw';
 import iconIssueArrow from '../icons/monitor-page/issue-arrow.svg?raw';
 
+/** 11:00 PM as a persistent fraction of the horizontal domain (same “clock slice” across presets). */
+const MONITOR_PRIMARY_X_RATIO = 23 / 24;
+
+/** X positions for secondary checkpoint dots only (major ticks); primary marker added separately at {@link MONITOR_PRIMARY_X_RATIO}. */
+const MONITOR_DOT_CHECKPOINT_RATIOS = {
+  /** 6 × 4h marks on Today’s axis */
+  today: [0, 4 / 24, 8 / 24, 12 / 24, 16 / 24, 20 / 24],
+  /** One checkpoint per weekday label column */
+  '2weeks': [0, 1 / 7, 2 / 7, 3 / 7, 4 / 7, 5 / 7, 6 / 7],
+  /** Aligned with 7 calendar-day buckets */
+  '1month': [0, 1 / 7, 2 / 7, 3 / 7, 4 / 7, 5 / 7, 6 / 7],
+  /** Fully zoomed-out: evenly spaced checkpoints; cap 19 + primary dot = max 20 */
+  '3months': Array.from({ length: 19 }, (_, i) => i / 18),
+};
+
+const CHART_PLOT_WIDTH = 1600;
+
+/** Demo series per timeframe preset (same viewBox 0 0 1600 260 as the chart SVG). */
+const MONITOR_TIMEFRAME_CHART = {
+  today: {
+    points: '0,220 320,176 520,220 820,220 1400,26 1600,130',
+    xLabels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+  },
+  '2weeks': {
+    points: '0,200 243,208 486,165 729,152 972,88 1215,118 1600,95',
+    xLabels: ['Mon', 'Wed', 'Fri', 'Sun', 'Tue', 'Thu', 'Sat'],
+  },
+  '1month': {
+    points: '0,185 266,130 533,175 800,55 1066,140 1333,105 1600,160',
+    xLabels: ['1', '5', '10', '15', '20', '25', '30'],
+  },
+  '3months': {
+    points: '0,215 266,200 533,120 800,100 1066,45 1333,85 1600,70',
+    xLabels: ['W1', 'W5', 'W9', 'W13', 'W17', 'W21', 'W25'],
+  },
+};
+
 export function renderMonitor() {
-  const chartPoints = '0,220 320,176 520,220 820,220 1400,26 1600,130';
+  const chartPoints = MONITOR_TIMEFRAME_CHART.today.points;
   const chartGridLineCount = 4;
   const chartGridYTop = 26;
   const chartGridYBottom = 234;
@@ -32,18 +69,33 @@ export function renderMonitor() {
 
       <div class="controls-bar">
         <div class="monitor-controls-group">
-          <div class="monitor-combo-control monitor-query-control" aria-label='Query "DoS" OR "Port Scan"'>
+          <div class="monitor-combo monitor-combo--query" aria-label='Query "DoS" OR "Port Scan"'>
             <span class="monitor-combo-label">Query</span>
             <span class="monitor-combo-value">"DoS" OR "Port Scan"</span>
           </div>
-          <div class="monitor-combo-control monitor-severity-control" aria-label='Severity >= "medium"'>
+          <div class="monitor-combo monitor-combo--severity" aria-label='Severity >= "medium"'>
             <span class="monitor-combo-label">Severity</span>
             <span class="monitor-combo-value">&gt;= "medium"</span>
           </div>
           <div class="control">
-            <div class="select-like monitor-timeframe-select">
-              <span>Last 3 Days</span>
-              <span class="monitor-dropdown-caret" aria-hidden="true">${iconDropdownArrow.trim()}</span>
+            <div class="monitor-timeframe-wrap">
+              <button
+                type="button"
+                class="select-like monitor-timeframe-select"
+                aria-label="Time range selector"
+                aria-haspopup="menu"
+                aria-expanded="false"
+              >
+                <span class="monitor-timeframe-label">Today</span>
+                <span class="monitor-dropdown-caret" aria-hidden="true">${iconDropdownArrow.trim()}</span>
+              </button>
+              <div class="monitor-timeframe-menu" role="menu" aria-label="Time range options" hidden>
+                <button type="button" class="monitor-timeframe-menu-item is-selected" role="menuitemradio" aria-checked="true" data-monitor-timeframe="today">Today</button>
+                <button type="button" class="monitor-timeframe-menu-item" role="menuitemradio" aria-checked="false" data-monitor-timeframe="2weeks">2 weeks</button>
+                <button type="button" class="monitor-timeframe-menu-item" role="menuitemradio" aria-checked="false" data-monitor-timeframe="1month">1 month</button>
+                <button type="button" class="monitor-timeframe-menu-item" role="menuitemradio" aria-checked="false" data-monitor-timeframe="3months">3 months</button>
+                <button type="button" class="monitor-timeframe-menu-item" role="menuitemradio" aria-checked="false" data-monitor-timeframe="custom">Custom Range</button>
+              </div>
             </div>
           </div>
           <button type="button" class="btn btn-dark">
@@ -68,10 +120,10 @@ export function renderMonitor() {
             ]
               .map(
                 ([label, val, sel]) =>
-                  `<button type="button" class="metric-card ${sel}" data-metric="${label}">
+                  `<div class="metric-card ${sel}" data-metric="${label}">
                     <div class="label">${label}</div>
                     <div class="value">${val}</div>
-                  </button>`,
+                  </div>`,
               )
               .join('')}
           </div>
@@ -93,9 +145,10 @@ export function renderMonitor() {
                   <span>10</span>
                   <span>0</span>
                 </div>
-                <svg class="chart-svg" viewBox="0 0 1600 260" preserveAspectRatio="none">
+                <svg class="chart-svg" viewBox="0 0 1600 260" preserveAspectRatio="xMidYMid meet">
                   ${chartGridLines}
                   <polyline fill="none" stroke="#3b82f6" stroke-width="0.125rem" points="${chartPoints}" stroke-linejoin="round"/>
+                  <g class="monitor-chart-dots" aria-hidden="true"></g>
                 </svg>
               </div>
               <div class="chart-x-axis-labels">
@@ -234,17 +287,160 @@ export function renderMonitor() {
   });
 }
 
-export function attachMonitorHandlers(root) {
-  root.querySelectorAll('.metric-card').forEach((el) => {
-    el.addEventListener('click', () => {
-      root.querySelectorAll('.metric-card').forEach((m) => m.classList.remove('selected'));
-      el.classList.add('selected');
-    });
+/**
+ * Samples Y on the demo polyline at x (our series are monotone increasing in x).
+ */
+function interpolateYOnPolyline(pointsStr, x) {
+  const parts = pointsStr.trim().split(/\s+/).filter(Boolean);
+  const pts = parts.map((p) => {
+    const [px, py] = p.split(',').map(Number);
+    return { x: px, y: py };
   });
+  if (pts.length === 0) return 130;
+  if (pts.length === 1) return pts[0].y;
+  if (x <= pts[0].x) return pts[0].y;
+  const lastPt = pts[pts.length - 1];
+  if (x >= lastPt.x) return lastPt.y;
+  let i = 0;
+  while (i < pts.length - 1 && pts[i + 1].x < x) i++;
+  const a = pts[i];
+  const b = pts[i + 1];
+  if (Math.abs(b.x - a.x) < 1e-9) return a.y;
+  const t = (x - a.x) / (b.x - a.x);
+  return a.y + t * (b.y - a.y);
+}
+
+/** Ratio-space gap: secondary checkpoints nearer than this to 23:00 are skipped (still show primary dot). ~1.7% span ≈ 27px */
+const MONITOR_DOT_DEDUP_RATIO = 0.017;
+
+/** Primary dot (23:00) + checkpoint dots placed on curve; merges near-primary checkpoints. */
+function renderMonitorChartDots(root, preset, pointsStr) {
+  const group = root.querySelector('.monitor-page .chart-svg .monitor-chart-dots');
+  if (!group) return;
+
+  const primaryX = MONITOR_PRIMARY_X_RATIO * CHART_PLOT_WIDTH;
+  const primaryY = interpolateYOnPolyline(pointsStr, primaryX);
+
+  const checkpointRatios = MONITOR_DOT_CHECKPOINT_RATIOS[preset] ?? [];
+  const checkpoints = checkpointRatios
+    .filter((r) => Math.abs(r - MONITOR_PRIMARY_X_RATIO) > MONITOR_DOT_DEDUP_RATIO)
+    .map((r) => {
+      const cx = r * CHART_PLOT_WIDTH;
+      return {
+        cx,
+        cy: interpolateYOnPolyline(pointsStr, cx),
+        primary: false,
+      };
+    });
+
+  const dots = [
+    ...checkpoints,
+    { cx: primaryX, cy: primaryY, primary: true },
+  ];
+
+  const ns = 'http://www.w3.org/2000/svg';
+  group.replaceChildren();
+
+  dots.forEach((d, i) => {
+    const c = document.createElementNS(ns, 'circle');
+    c.setAttribute('cx', String(d.cx));
+    c.setAttribute('cy', String(d.cy));
+    /* 10×10 user units (diameter 10) — uniform; meet preserves circular shape vs non-uniform stretch */
+    c.setAttribute('r', '5');
+    c.setAttribute('class', d.primary ? 'monitor-chart-dot monitor-chart-dot--primary' : 'monitor-chart-dot');
+    c.setAttribute('data-dot-index', String(i));
+    group.appendChild(c);
+  });
+}
+
+/**
+ * Updates the main telemetry chart polyline + x-axis labels for a timeframe preset.
+ * Does nothing for `custom` (Custom Range).
+ */
+function applyMonitorTimeframeChart(root, preset) {
+  if (preset === 'custom' || !MONITOR_TIMEFRAME_CHART[preset]) return;
+  const cfg = MONITOR_TIMEFRAME_CHART[preset];
+  const poly = root.querySelector('.monitor-page .chart-svg polyline');
+  const xAxis = root.querySelector('.monitor-page .chart-x-axis-labels');
+  if (poly) poly.setAttribute('points', cfg.points);
+  if (xAxis) {
+    const spans = xAxis.querySelectorAll('span');
+    cfg.xLabels.forEach((text, i) => {
+      if (spans[i]) spans[i].textContent = text;
+    });
+  }
+  renderMonitorChartDots(root, preset, cfg.points);
+}
+
+export function attachMonitorHandlers(root) {
+  const timeframeWrap = root.querySelector('.monitor-timeframe-wrap');
+  const timeframeBtn = root.querySelector('.monitor-timeframe-select');
+  const timeframeMenu = root.querySelector('.monitor-timeframe-menu');
+  const timeframeLabel = root.querySelector('.monitor-timeframe-label');
+  const timeframeItems = timeframeMenu
+    ? Array.from(timeframeMenu.querySelectorAll('.monitor-timeframe-menu-item'))
+    : [];
+
+  function closeTimeframeMenu() {
+    if (!timeframeBtn || !timeframeMenu) return;
+    timeframeBtn.setAttribute('aria-expanded', 'false');
+    timeframeMenu.hidden = true;
+    timeframeWrap?.classList.remove('is-open');
+  }
+
+  function openTimeframeMenu() {
+    if (!timeframeBtn || !timeframeMenu) return;
+    timeframeBtn.setAttribute('aria-expanded', 'true');
+    timeframeMenu.hidden = false;
+    timeframeWrap?.classList.add('is-open');
+  }
+
+  if (timeframeBtn && timeframeMenu) {
+    timeframeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (timeframeMenu.hidden) {
+        openTimeframeMenu();
+        return;
+      }
+      closeTimeframeMenu();
+    });
+
+    timeframeMenu.addEventListener('click', (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      const item = target.closest('.monitor-timeframe-menu-item');
+      if (!item) return;
+
+      for (const menuItem of timeframeItems) {
+        menuItem.classList.remove('is-selected');
+        menuItem.setAttribute('aria-checked', 'false');
+      }
+      item.classList.add('is-selected');
+      item.setAttribute('aria-checked', 'true');
+      if (timeframeLabel) timeframeLabel.textContent = item.textContent ?? '';
+      const preset = item.dataset.monitorTimeframe ?? '';
+      applyMonitorTimeframeChart(root, preset);
+      closeTimeframeMenu();
+    });
+
+    document.addEventListener('pointerdown', (e) => {
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (timeframeWrap?.contains(target)) return;
+      closeTimeframeMenu();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeTimeframeMenu();
+    });
+  }
+
   const sb = root.querySelector('#step-sandbox');
   if (sb) {
     sb.addEventListener('click', () => {
       window.location.hash = '#/incident';
     });
   }
+
+  applyMonitorTimeframeChart(root, 'today');
 }

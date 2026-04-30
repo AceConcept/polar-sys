@@ -2,9 +2,9 @@ import { shell } from '../layout.js';
 import iconPerformScan from '../icons/button-icons/grain.svg?raw';
 import iconDropdownArrow from '../icons/incident-page/dropdown-arrow.svg?raw';
 import iconFilter from '../icons/SearchBarRow/filter-icon.svg?raw';
-import tapeRingUrl from '../icons/incident-page/pvBtn_k.png?url';
+import tapeRingUrl from '../icons/incident-page/circle_v2.png?url';
 
-/** Square side (rem) for the rotating tape image; red node is sized from this. 85px at 16px root. */
+/** Square side (rem) for the rotating ring image; red node is sized from this. 85px at 16px root. */
 const DB_CORE_TAPE_BOX_REM = 5.3125;
 /**
  * Red fill: circumference = this × (π × tape box side) — i.e. diameter = scale × tape box.
@@ -13,7 +13,7 @@ const DB_CORE_TAPE_BOX_REM = 5.3125;
 const DB_CORE_RED_CIRCUMFERENCE_SCALE = 0.62;
 
 /**
- * Optical centering nudge for the tape PNG (applied before rotation). Same units as SVG lengths
+ * Optical centering nudge for the ring PNG (applied before rotation). Same units as SVG lengths
  * (e.g. `0`, `1px`, `0.0625rem`). Adjust if the ring looks off-center while spinning.
  */
 const DB_CORE_TAPE_IMAGE_NUDGE_X = '0';
@@ -72,10 +72,24 @@ export function renderIncident() {
             <button type="button" class="icon-btn" aria-label="Filter graph">
               ${iconFilter.trim()}
             </button>
-            <button type="button" class="graph-dropdown" aria-label="Incident ID (demo control)">
-              <span class="graph-dropdown-label">Incident ID: #8846</span>
-              <span class="graph-dropdown-caret" aria-hidden="true">${iconDropdownArrow.trim()}</span>
-            </button>
+            <div class="graph-dropdown-wrap">
+              <button
+                type="button"
+                class="graph-dropdown"
+                aria-label="Incident ID (demo control)"
+                aria-haspopup="menu"
+                aria-expanded="false"
+              >
+                <span class="graph-dropdown-label">Incident ID: #8846</span>
+                <span class="graph-dropdown-caret" aria-hidden="true">${iconDropdownArrow.trim()}</span>
+              </button>
+              <div class="graph-dropdown-menu" role="menu" aria-label="Incident selector" hidden>
+                <button type="button" class="graph-dropdown-menu-item is-selected" role="menuitemradio" aria-checked="true">ID: #8846</button>
+                <button type="button" class="graph-dropdown-menu-item" role="menuitemradio" aria-checked="false">ID: #7319</button>
+                <button type="button" class="graph-dropdown-menu-item" role="menuitemradio" aria-checked="false">ID: #9021</button>
+                <button type="button" class="graph-dropdown-menu-item" role="menuitemradio" aria-checked="false">ID: #1084</button>
+              </div>
+            </div>
             <button type="button" class="icon-btn" aria-label="Expand">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
             </button>
@@ -228,6 +242,12 @@ export function attachIncidentHandlers(root = document) {
   const viewport = root.querySelector('.graph-map-viewport');
   const stage = root.querySelector('.graph-map-stage');
   if (!widget || !viewport || !stage) return;
+  const graphDropdownWrap = root.querySelector('.graph-dropdown-wrap');
+  const graphDropdownBtn = root.querySelector('.graph-dropdown');
+  const graphDropdownMenu = root.querySelector('.graph-dropdown-menu');
+  const graphDropdownItems = graphDropdownMenu
+    ? Array.from(graphDropdownMenu.querySelectorAll('.graph-dropdown-menu-item'))
+    : [];
 
   let scale = 1;
   let tx = 0;
@@ -239,6 +259,70 @@ export function attachIncidentHandlers(root = document) {
   let startTx = 0;
   let startTy = 0;
   let docBound = false;
+
+  function closeIncidentDropdown() {
+    if (!graphDropdownBtn || !graphDropdownMenu) return;
+    graphDropdownBtn.setAttribute('aria-expanded', 'false');
+    graphDropdownMenu.hidden = true;
+    graphDropdownWrap?.classList.remove('is-open');
+  }
+
+  function openIncidentDropdown() {
+    if (!graphDropdownBtn || !graphDropdownMenu) return;
+    graphDropdownBtn.setAttribute('aria-expanded', 'true');
+    graphDropdownMenu.hidden = false;
+    graphDropdownWrap?.classList.add('is-open');
+  }
+
+  function toggleIncidentDropdown() {
+    if (!graphDropdownBtn || !graphDropdownMenu) return;
+    if (graphDropdownMenu.hidden) {
+      openIncidentDropdown();
+      return;
+    }
+    closeIncidentDropdown();
+  }
+
+  if (graphDropdownBtn && graphDropdownMenu) {
+    graphDropdownBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleIncidentDropdown();
+    });
+
+    graphDropdownMenu.addEventListener('click', (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      const item = target.closest('.graph-dropdown-menu-item');
+      if (!item) return;
+
+      for (const menuItem of graphDropdownItems) {
+        menuItem.classList.remove('is-selected');
+        menuItem.setAttribute('aria-checked', 'false');
+      }
+      item.classList.add('is-selected');
+      item.setAttribute('aria-checked', 'true');
+      const labelNode = graphDropdownBtn.querySelector('.graph-dropdown-label');
+      if (labelNode) {
+        const selectedText = item.textContent ?? '';
+        const match = selectedText.match(/#\d+/);
+        if (match) {
+          labelNode.textContent = `Incident ID: ${match[0]}`;
+        }
+      }
+      closeIncidentDropdown();
+    });
+
+    document.addEventListener('pointerdown', (e) => {
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (graphDropdownWrap?.contains(target)) return;
+      closeIncidentDropdown();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeIncidentDropdown();
+    });
+  }
 
   function applyTransform() {
     stage.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;

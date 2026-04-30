@@ -75,9 +75,8 @@ export function renderAnomaly() {
     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>';
 
   const grid = cards
-    .map(
-      (c) => `
-      <button type="button" class="anomaly-card${c.id === '8846' ? ' anomaly-card--to-incident' : ' anomaly-card--static'}" data-card-id="${c.id}">
+    .map((c) => {
+      const inner = `
         <div class="anomaly-card-top">
           <span class="anomaly-card-source">
             <span class="db-pill">${dbIcon}<span class="db-pill-host">${c.host}</span></span>
@@ -89,10 +88,12 @@ export function renderAnomaly() {
         <div class="card-foot">
           <span class="pill-id">#${c.id}</span>
           <span class="severity ${sevClass(c.severity)}"><span class="severity-dot"></span>${sevLabel(c.severity)}</span>
-        </div>
-      </button>
-    `,
-    )
+        </div>`;
+      if (c.id === '8846') {
+        return `<button type="button" class="anomaly-card anomaly-card--to-incident" data-card-id="${c.id}">${inner}</button>`;
+      }
+      return `<article class="anomaly-card anomaly-card--static" data-card-id="${c.id}">${inner}</article>`;
+    })
     .join('');
 
   const content = `
@@ -132,12 +133,10 @@ export function renderAnomaly() {
 }
 
 export function attachAnomalyHandlers(root) {
-  root.querySelectorAll('.anomaly-card').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const id = btn.getAttribute('data-card-id');
-      if (id === '8846') {
-        window.location.hash = '#/incident';
-      }
+  const clickable = root.querySelector('.anomaly-card--to-incident');
+  if (clickable) {
+    clickable.addEventListener('click', () => {
+      window.location.hash = '#/incident';
     });
-  });
+  }
 }
