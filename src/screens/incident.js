@@ -80,14 +80,17 @@ export function renderIncident() {
                 aria-haspopup="menu"
                 aria-expanded="false"
               >
-                <span class="graph-dropdown-label">Incident ID: #8846</span>
+                <span class="graph-dropdown-label">
+                  <span class="graph-dropdown-label-static">Incident ID:</span>
+                  <span class="graph-dropdown-label-id" aria-live="polite">#8846</span>
+                </span>
                 <span class="graph-dropdown-caret" aria-hidden="true">${iconDropdownArrow.trim()}</span>
               </button>
               <div class="graph-dropdown-menu" role="menu" aria-label="Incident selector" hidden>
-                <button type="button" class="graph-dropdown-menu-item is-selected" role="menuitemradio" aria-checked="true">ID: #8846</button>
-                <button type="button" class="graph-dropdown-menu-item" role="menuitemradio" aria-checked="false">ID: #7319</button>
-                <button type="button" class="graph-dropdown-menu-item" role="menuitemradio" aria-checked="false">ID: #9021</button>
-                <button type="button" class="graph-dropdown-menu-item" role="menuitemradio" aria-checked="false">ID: #1084</button>
+                <button type="button" class="graph-dropdown-menu-item is-selected" role="menuitemradio" aria-checked="true">Incident ID: #8846</button>
+                <button type="button" class="graph-dropdown-menu-item" role="menuitemradio" aria-checked="false">Incident ID: #7319</button>
+                <button type="button" class="graph-dropdown-menu-item" role="menuitemradio" aria-checked="false">Incident ID: #9021</button>
+                <button type="button" class="graph-dropdown-menu-item" role="menuitemradio" aria-checked="false">Incident ID: #1084</button>
               </div>
             </div>
             <button type="button" class="icon-btn" aria-label="Expand">
@@ -301,13 +304,11 @@ export function attachIncidentHandlers(root = document) {
       }
       item.classList.add('is-selected');
       item.setAttribute('aria-checked', 'true');
-      const labelNode = graphDropdownBtn.querySelector('.graph-dropdown-label');
-      if (labelNode) {
+      const idNode = graphDropdownBtn.querySelector('.graph-dropdown-label-id');
+      if (idNode) {
         const selectedText = item.textContent ?? '';
         const match = selectedText.match(/#\d+/);
-        if (match) {
-          labelNode.textContent = `Incident ID: ${match[0]}`;
-        }
+        if (match) idNode.textContent = match[0];
       }
       closeIncidentDropdown();
     });
