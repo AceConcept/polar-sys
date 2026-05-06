@@ -19,6 +19,13 @@ const DB_CORE_RED_CIRCUMFERENCE_SCALE = 0.62;
 const DB_CORE_TAPE_IMAGE_NUDGE_X = '0';
 const DB_CORE_TAPE_IMAGE_NUDGE_Y = '0';
 
+function escHtmlAttr(raw) {
+  return String(raw)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;');
+}
+
 export function renderIncident() {
   const dbCoreTapeHalfRem = DB_CORE_TAPE_BOX_REM / 2;
   const dbCoreRedRadiusRem = (DB_CORE_TAPE_BOX_REM * DB_CORE_RED_CIRCUMFERENCE_SCALE) / 2;
@@ -216,7 +223,7 @@ export function renderIncident() {
               ]
                 .map(
                   ([l, v]) =>
-                    `<div class="mini-metric"><div class="l">${l}</div><div class="v">${v}</div></div>`,
+                    `<button type="button" class="mini-metric" aria-label="${escHtmlAttr(l)}, ${escHtmlAttr(v)}"><div class="l">${l}</div><div class="v">${v}</div></button>`,
                 )
                 .join('')}
             </div>

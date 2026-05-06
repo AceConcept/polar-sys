@@ -2,22 +2,22 @@ import { shell } from '../layout.js';
 import iconDropdownArrow from '../icons/incident-page/dropdown-arrow.svg?raw';
 import iconIssueArrow from '../icons/monitor-page/issue-arrow.svg?raw';
 
-/** 11:00 PM as a persistent fraction of the horizontal domain (same “clock slice” across presets). */
-const MONITOR_PRIMARY_X_RATIO = 23 / 24;
-
-/** X positions for secondary checkpoint dots only (major ticks); primary marker added separately at {@link MONITOR_PRIMARY_X_RATIO}. */
-const MONITOR_DOT_CHECKPOINT_RATIOS = {
-  /** 6 × 4h marks on Today’s axis */
-  today: [0, 4 / 24, 8 / 24, 12 / 24, 16 / 24, 20 / 24],
-  /** One checkpoint per weekday label column */
-  '2weeks': [0, 1 / 7, 2 / 7, 3 / 7, 4 / 7, 5 / 7, 6 / 7],
-  /** Aligned with 7 calendar-day buckets */
-  '1month': [0, 1 / 7, 2 / 7, 3 / 7, 4 / 7, 5 / 7, 6 / 7],
-  /** Fully zoomed-out: evenly spaced checkpoints; cap 19 + primary dot = max 20 */
-  '3months': Array.from({ length: 19 }, (_, i) => i / 18),
-};
-
 const CHART_PLOT_WIDTH = 1600;
+/** SVG viewBox height for the telemetry chart. */
+const CHART_VIEWBOX_HEIGHT = 260;
+/** Y-axis tick values (40→20→10→0 top→bottom); HTML labels sit beside the SVG so they are not stretched with the plot. */
+const MONITOR_CHART_Y_TICK_VALUES = [40, 20, 10, 0];
+/** Horizontal guides + Y labels sit evenly between these % of viewBox height (fills plot row vertically). */
+const MONITOR_CHART_Y_AXIS_TOP_PCT = 10;
+const MONITOR_CHART_Y_AXIS_BOT_PCT = 90;
+
+/** Even vertical spacing across the chart band (`index` 0 .. `count`-1 maps top→bottom). */
+function monitorChartGuideY(viewH, index, count = MONITOR_CHART_Y_TICK_VALUES.length) {
+  const top = (MONITOR_CHART_Y_AXIS_TOP_PCT / 100) * viewH;
+  const bot = (MONITOR_CHART_Y_AXIS_BOT_PCT / 100) * viewH;
+  if (count <= 1) return top;
+  return top + (index / (count - 1)) * (bot - top);
+}
 
 /** Demo series per timeframe preset (same viewBox 0 0 1600 260 as the chart SVG). */
 const MONITOR_TIMEFRAME_CHART = {
@@ -41,16 +41,11 @@ const MONITOR_TIMEFRAME_CHART = {
 
 export function renderMonitor() {
   const chartPoints = MONITOR_TIMEFRAME_CHART.today.points;
-  const chartGridLineCount = 4;
-  const chartGridYTop = 26;
-  const chartGridYBottom = 234;
-  const chartGridLines = Array.from({ length: chartGridLineCount })
-    .map((_, i) => {
-      const t = chartGridLineCount > 1 ? i / (chartGridLineCount - 1) : 0;
-      const y = chartGridYTop + t * (chartGridYBottom - chartGridYTop);
-      return `<line x1="0" y1="${y}" x2="1600" y2="${y}" stroke="#252525" stroke-width="1"/>`;
-    })
-    .join('');
+  const nY = MONITOR_CHART_Y_TICK_VALUES.length;
+  const chartYGuidesSvg = MONITOR_CHART_Y_TICK_VALUES.map((_, index) => {
+    const y = monitorChartGuideY(CHART_VIEWBOX_HEIGHT, index, nY);
+    return `<line class="chart-grid-line chart-grid-line--h" x1="0" y1="${y}" x2="${CHART_PLOT_WIDTH}" y2="${y}" stroke="#252525" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
+  }).join('');
 
   const content = `
     <section class="monitor-page">
@@ -140,15 +135,15 @@ export function renderMonitor() {
             <div class="chart-svg-wrap">
               <div class="chart-plot-row">
                 <div class="chart-y-axis-labels">
-                  <span>40</span>
-                  <span>20</span>
-                  <span>10</span>
-                  <span>0</span>
+                  ${MONITOR_CHART_Y_TICK_VALUES.map((v) => `<span>${v}</span>`).join('')}
                 </div>
-                <svg class="chart-svg" viewBox="0 0 1600 260" preserveAspectRatio="xMidYMid meet">
-                  ${chartGridLines}
-                  <polyline fill="none" stroke="#3b82f6" stroke-width="0.125rem" points="${chartPoints}" stroke-linejoin="round"/>
-                  <g class="monitor-chart-dots" aria-hidden="true"></g>
+                <svg
+                  class="chart-svg"
+                  viewBox="0 0 ${CHART_PLOT_WIDTH} ${CHART_VIEWBOX_HEIGHT}"
+                  preserveAspectRatio="none"
+                >
+                  <g class="chart-grid-lines chart-grid-lines--horizontal" aria-hidden="true">${chartYGuidesSvg}</g>
+                  <polyline fill="none" stroke="#3b82f6" stroke-width="0.125rem" points="${chartPoints}" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
                 </svg>
               </div>
               <div class="chart-x-axis-labels">
@@ -288,72 +283,6 @@ export function renderMonitor() {
 }
 
 /**
- * Samples Y on the demo polyline at x (our series are monotone increasing in x).
- */
-function interpolateYOnPolyline(pointsStr, x) {
-  const parts = pointsStr.trim().split(/\s+/).filter(Boolean);
-  const pts = parts.map((p) => {
-    const [px, py] = p.split(',').map(Number);
-    return { x: px, y: py };
-  });
-  if (pts.length === 0) return 130;
-  if (pts.length === 1) return pts[0].y;
-  if (x <= pts[0].x) return pts[0].y;
-  const lastPt = pts[pts.length - 1];
-  if (x >= lastPt.x) return lastPt.y;
-  let i = 0;
-  while (i < pts.length - 1 && pts[i + 1].x < x) i++;
-  const a = pts[i];
-  const b = pts[i + 1];
-  if (Math.abs(b.x - a.x) < 1e-9) return a.y;
-  const t = (x - a.x) / (b.x - a.x);
-  return a.y + t * (b.y - a.y);
-}
-
-/** Ratio-space gap: secondary checkpoints nearer than this to 23:00 are skipped (still show primary dot). ~1.7% span ≈ 27px */
-const MONITOR_DOT_DEDUP_RATIO = 0.017;
-
-/** Primary dot (23:00) + checkpoint dots placed on curve; merges near-primary checkpoints. */
-function renderMonitorChartDots(root, preset, pointsStr) {
-  const group = root.querySelector('.monitor-page .chart-svg .monitor-chart-dots');
-  if (!group) return;
-
-  const primaryX = MONITOR_PRIMARY_X_RATIO * CHART_PLOT_WIDTH;
-  const primaryY = interpolateYOnPolyline(pointsStr, primaryX);
-
-  const checkpointRatios = MONITOR_DOT_CHECKPOINT_RATIOS[preset] ?? [];
-  const checkpoints = checkpointRatios
-    .filter((r) => Math.abs(r - MONITOR_PRIMARY_X_RATIO) > MONITOR_DOT_DEDUP_RATIO)
-    .map((r) => {
-      const cx = r * CHART_PLOT_WIDTH;
-      return {
-        cx,
-        cy: interpolateYOnPolyline(pointsStr, cx),
-        primary: false,
-      };
-    });
-
-  const dots = [
-    ...checkpoints,
-    { cx: primaryX, cy: primaryY, primary: true },
-  ];
-
-  const ns = 'http://www.w3.org/2000/svg';
-  group.replaceChildren();
-
-  dots.forEach((d, i) => {
-    const c = document.createElementNS(ns, 'circle');
-    c.setAttribute('cx', String(d.cx));
-    c.setAttribute('cy', String(d.cy));
-    /* 10×10 user units (diameter 10) — uniform; meet preserves circular shape vs non-uniform stretch */
-    c.setAttribute('r', '5');
-    c.setAttribute('class', d.primary ? 'monitor-chart-dot monitor-chart-dot--primary' : 'monitor-chart-dot');
-    c.setAttribute('data-dot-index', String(i));
-    group.appendChild(c);
-  });
-}
-
-/**
  * Updates the main telemetry chart polyline + x-axis labels for a timeframe preset.
  * Does nothing for `custom` (Custom Range).
  */
@@ -369,7 +298,6 @@ function applyMonitorTimeframeChart(root, preset) {
       if (spans[i]) spans[i].textContent = text;
     });
   }
-  renderMonitorChartDots(root, preset, cfg.points);
 }
 
 export function attachMonitorHandlers(root) {
