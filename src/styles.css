@@ -86,7 +86,7 @@ button {
   --artboard-scale: 1;
   --hairline: min(
     16px,
-    calc(1px / max(var(--artboard-scale), 0.0001))
+    calc(2px / max(var(--artboard-scale), 0.0001))
   );
 }
 
@@ -1370,6 +1370,20 @@ a.crumb-segment--link:hover {
   white-space: nowrap;
   color: #ffffff;
   background-color: #000000;
+}
+
+/* Tuned for ~1642x924 viewport (artboard scale ~= 0.64): preserve combo outlines and divider visibility. */
+@media (max-width: 1700px) and (max-height: 980px) {
+  .artboard {
+    --hairline: min(
+      16px,
+      calc(2px / max(var(--artboard-scale), 0.0001))
+    );
+  }
+
+  .monitor-page {
+    --monitor-combo-stroke: #6f6f6f;
+  }
 }
 
 .controls-bar .btn {
