@@ -2773,11 +2773,7 @@ a.crumb-segment--link:hover {
 
 .graph-canvas > .graph-widget-head .graph-dropdown-label-id {
   display: inline-block;
-  flex: 0 0 5ch;
-  width: 5ch;
-  min-width: 5ch;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  flex: 0 0 auto;
   font-variant-numeric: tabular-nums;
   text-align: left;
 }

@@ -19,28 +19,113 @@ function monitorChartGuideY(viewH, index, count = MONITOR_CHART_Y_TICK_VALUES.le
   return top + (index / (count - 1)) * (bot - top);
 }
 
-/** Demo series per timeframe preset (same viewBox 0 0 1600 260 as the chart SVG). */
+const CHART_N_Y = MONITOR_CHART_Y_TICK_VALUES.length;
+/** SVG y aligned to horizontal grid: tick index 0 = 40 (top) … 3 = 0 (bottom). */
+function chartYForTickIndex(tickIndex) {
+  return Math.round(monitorChartGuideY(CHART_VIEWBOX_HEIGHT, tickIndex, CHART_N_Y));
+}
+const CHART_Y_MAX = chartYForTickIndex(0);
+const CHART_Y_MID_HIGH = chartYForTickIndex(1); // ~value 20
+const CHART_Y_MID_LOW = chartYForTickIndex(2); // ~value 10
+const CHART_Y_ZERO = chartYForTickIndex(3); // metric 0 (bottom of plot)
+
+/** Today-only demo shape: baseline at metric 0, hump before noon clip. */
+const MONITOR_CHART_TODAY_KNOTS = `0,${CHART_Y_ZERO} 620,${CHART_Y_ZERO} 715,${CHART_Y_MID_HIGH} 755,${CHART_Y_MAX} 785,${CHART_Y_MID_LOW} 800,${CHART_Y_ZERO}`;
+
+/**
+ * How far along the x-axis the series ends (demo "now"): noon on a 24h day for Today;
+ * other presets use the same relative progress through the range (midpoint of the window).
+ */
+const CHART_DATA_END_RATIOS = {
+  today: 12 / 24,
+  '2weeks': 7 / 14,
+  '1month': 15 / 30,
+  '3months': 45 / 90,
+};
+
+/** Demo knot series per preset — full span 0…CHART_PLOT_WIDTH; clipping + step path applied at render. */
 const MONITOR_TIMEFRAME_CHART = {
   today: {
-    points: '0,220 320,176 520,220 820,220 1400,26 1600,130',
+    points: MONITOR_CHART_TODAY_KNOTS,
     xLabels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
   },
   '2weeks': {
-    points: '0,200 243,208 486,165 729,152 972,88 1215,118 1600,95',
+    points: `0,${CHART_Y_ZERO} 243,208 486,165 729,152 972,88 1215,118 1600,95`,
     xLabels: ['Mon', 'Wed', 'Fri', 'Sun', 'Tue', 'Thu', 'Sat'],
   },
   '1month': {
-    points: '0,185 266,130 533,175 800,55 1066,140 1333,105 1600,160',
+    points: `0,${CHART_Y_ZERO} 266,130 533,175 800,55 1066,140 1333,105 1600,160`,
     xLabels: ['1', '5', '10', '15', '20', '25', '30'],
   },
   '3months': {
-    points: '0,215 266,200 533,120 800,100 1066,45 1333,85 1600,70',
+    points: `0,${CHART_Y_ZERO} 266,200 533,120 800,100 1066,45 1333,85 1600,70`,
     xLabels: ['W1', 'W5', 'W9', 'W13', 'W17', 'W21', 'W25'],
   },
 };
 
+function parseKnots(pointsStr) {
+  return pointsStr
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((pair) => {
+      const [xs, ys] = pair.split(',');
+      return { x: Number(xs), y: Number(ys) };
+    })
+    .sort((a, b) => a.x - b.x);
+}
+
+/** Step-after: value held from each knot until the next x; plateau y is the knot at the start of each segment. */
+function stepValueAt(sortedKnots, xq) {
+  if (sortedKnots.length === 0) return 0;
+  let y = sortedKnots[0].y;
+  for (const k of sortedKnots) {
+    if (k.x <= xq) y = k.y;
+    else break;
+  }
+  return y;
+}
+
+/**
+ * Drop knots past "now" and cap with a point at endX so the line does not run to the right edge of the chart.
+ */
+function clipKnotsToEndX(sortedKnots, endX) {
+  if (sortedKnots.length === 0) return [];
+  const yEnd = stepValueAt(sortedKnots, endX);
+  const trimmed = sortedKnots.filter((k) => k.x < endX);
+  trimmed.push({ x: endX, y: yEnd });
+  return trimmed;
+}
+
+/**
+ * Step chart (horizontal plateaus, vertical jumps): step-after from sorted knots.
+ */
+function knotsToStepPolylinePoints(knots) {
+  const k = [...knots].sort((a, b) => a.x - b.x);
+  if (k.length === 0) return '';
+  if (k.length === 1) return `${k[0].x},${k[0].y}`;
+  const pts = [`${k[0].x},${k[0].y}`];
+  for (let i = 0; i < k.length - 1; i++) {
+    pts.push(`${k[i + 1].x},${k[i].y}`);
+    if (k[i + 1].y !== k[i].y) {
+      pts.push(`${k[i + 1].x},${k[i + 1].y}`);
+    }
+  }
+  return pts.join(' ');
+}
+
+function buildMonitorChartPolylinePoints(preset) {
+  const cfg = MONITOR_TIMEFRAME_CHART[preset];
+  const ratio = CHART_DATA_END_RATIOS[preset] ?? 0.5;
+  if (!cfg) return '';
+  const endX = CHART_PLOT_WIDTH * ratio;
+  const sorted = parseKnots(cfg.points);
+  const clipped = clipKnotsToEndX(sorted, endX);
+  return knotsToStepPolylinePoints(clipped);
+}
+
 export function renderMonitor() {
-  const chartPoints = MONITOR_TIMEFRAME_CHART.today.points;
+  const chartPoints = buildMonitorChartPolylinePoints('today');
   const nY = MONITOR_CHART_Y_TICK_VALUES.length;
   const chartYGuidesSvg = MONITOR_CHART_Y_TICK_VALUES.map((_, index) => {
     const y = monitorChartGuideY(CHART_VIEWBOX_HEIGHT, index, nY);
@@ -143,7 +228,7 @@ export function renderMonitor() {
                   preserveAspectRatio="none"
                 >
                   <g class="chart-grid-lines chart-grid-lines--horizontal" aria-hidden="true">${chartYGuidesSvg}</g>
-                  <polyline fill="none" stroke="#3b82f6" stroke-width="0.125rem" points="${chartPoints}" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+                  <polyline fill="none" stroke="#3b82f6" stroke-width="0.125rem" points="${chartPoints}" stroke-linejoin="miter" stroke-linecap="square" vector-effect="non-scaling-stroke"/>
                 </svg>
               </div>
               <div class="chart-x-axis-labels">
@@ -291,7 +376,7 @@ function applyMonitorTimeframeChart(root, preset) {
   const cfg = MONITOR_TIMEFRAME_CHART[preset];
   const poly = root.querySelector('.monitor-page .chart-svg polyline');
   const xAxis = root.querySelector('.monitor-page .chart-x-axis-labels');
-  if (poly) poly.setAttribute('points', cfg.points);
+  if (poly) poly.setAttribute('points', buildMonitorChartPolylinePoints(preset));
   if (xAxis) {
     const spans = xAxis.querySelectorAll('span');
     cfg.xLabels.forEach((text, i) => {
