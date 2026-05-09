@@ -43,6 +43,43 @@ const CHART_DATA_END_RATIOS = {
   '3months': 45 / 90,
 };
 
+function formatMMDD(d) {
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${String(m).padStart(2, '0')}/${String(day).padStart(2, '0')}`;
+}
+
+/** Seven evenly spaced calendar dates (MM/DD, local) across the last 14 days ending today. */
+function monitorChartTwoWeekXLabels() {
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - 13);
+  const labels = [];
+  for (let i = 0; i < 7; i++) {
+    const dayOffset = Math.round((13 * i) / 6);
+    const d = new Date(start);
+    d.setDate(start.getDate() + dayOffset);
+    labels.push(formatMMDD(d));
+  }
+  return labels;
+}
+
+/** Seven evenly spaced calendar dates (MM/DD, local) across ~90 days ending today. */
+function monitorChartThreeMonthXLabels() {
+  const spanDays = 89; /* inclusive window: start + 89 = today → 90 calendar days */
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - spanDays);
+  const labels = [];
+  for (let i = 0; i < 7; i++) {
+    const dayOffset = Math.round((spanDays * i) / 6);
+    const d = new Date(start);
+    d.setDate(start.getDate() + dayOffset);
+    labels.push(formatMMDD(d));
+  }
+  return labels;
+}
+
 /** Demo knot series per preset — full span 0…CHART_PLOT_WIDTH; clipping + step path applied at render. */
 const MONITOR_TIMEFRAME_CHART = {
   today: {
@@ -51,7 +88,6 @@ const MONITOR_TIMEFRAME_CHART = {
   },
   '2weeks': {
     points: `0,${CHART_Y_ZERO} 243,208 486,165 729,152 972,88 1215,118 1600,95`,
-    xLabels: ['Mon', 'Wed', 'Fri', 'Sun', 'Tue', 'Thu', 'Sat'],
   },
   '1month': {
     points: `0,${CHART_Y_ZERO} 266,130 533,175 800,55 1066,140 1333,105 1600,160`,
@@ -59,9 +95,15 @@ const MONITOR_TIMEFRAME_CHART = {
   },
   '3months': {
     points: `0,${CHART_Y_ZERO} 266,200 533,120 800,100 1066,45 1333,85 1600,70`,
-    xLabels: ['W1', 'W5', 'W9', 'W13', 'W17', 'W21', 'W25'],
   },
 };
+
+function getMonitorChartXLabels(preset) {
+  if (preset === '2weeks') return monitorChartTwoWeekXLabels();
+  if (preset === '3months') return monitorChartThreeMonthXLabels();
+  const cfg = MONITOR_TIMEFRAME_CHART[preset];
+  return cfg && Array.isArray(cfg.xLabels) ? cfg.xLabels : [];
+}
 
 function parseKnots(pointsStr) {
   return pointsStr
@@ -379,7 +421,7 @@ function applyMonitorTimeframeChart(root, preset) {
   if (poly) poly.setAttribute('points', buildMonitorChartPolylinePoints(preset));
   if (xAxis) {
     const spans = xAxis.querySelectorAll('span');
-    cfg.xLabels.forEach((text, i) => {
+    getMonitorChartXLabels(preset).forEach((text, i) => {
       if (spans[i]) spans[i].textContent = text;
     });
   }
