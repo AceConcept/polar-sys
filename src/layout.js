@@ -111,12 +111,21 @@ function formatStandardBreadcrumb(leadHtml, trailHtml) {
 }
 
 export function sidebar(active = 'network') {
-  const item = (ic, label, key) =>
-    `<span class="nav-item ${active === key ? 'active' : ''}">${ic}<span>${label}</span></span>`;
+  /** Primary + footer sidebar entries (same control semantics everywhere). */
+  const sidebarNavButton = (ic, label, key) => {
+    const isActive = active === key;
+    const activeCls = isActive ? ' active' : '';
+    const ariaCur = isActive ? ' aria-current="page"' : '';
+    return `<button type="button" class="nav-item${activeCls}"${ariaCur}>${ic}<span class="nav-item-label">${label}</span></button>`;
+  };
 
   /** Only sidebar navigation target: return to Anomaly Detection. Same markup on every page. */
-  const networkMonitorLink = (ic, label, key) =>
-    `<a class="nav-item ${active === key ? 'active' : ''}" href="#/anomaly">${ic}<span>${label}</span></a>`;
+  const networkMonitorLink = (ic, label, key) => {
+    const isActive = active === key;
+    const activeCls = isActive ? ' active' : '';
+    const ariaCur = isActive ? ' aria-current="page"' : '';
+    return `<a class="nav-item${activeCls}" href="#/anomaly"${ariaCur}>${ic}<span class="nav-item-label">${label}</span></a>`;
+  };
 
   return `
     <aside class="sidebar">
@@ -125,17 +134,17 @@ export function sidebar(active = 'network') {
         <span class="brand-name">Polor Systems</span>
       </div>
       <nav class="nav-primary" aria-label="Primary">
-        ${item(navSvg(iconHome), 'Home', 'home')}
-        ${item(navSvg(iconIncidentReport), 'Incident Reports', 'incidents')}
+        ${sidebarNavButton(navSvg(iconHome), 'Home', 'home')}
+        ${sidebarNavButton(navSvg(iconIncidentReport), 'Incident Reports', 'incidents')}
         ${networkMonitorLink(navSvg(iconNetworkManager), 'Network Monitoring', 'network')}
-        ${item(navSvg(iconAuditNotes), 'Audit Logs', 'audit')}
-        ${item(navSvg(iconCompliance), 'Compliance Dashboard', 'compliance')}
-        ${item(navSvg(iconSettings), 'Settings', 'settings')}
+        ${sidebarNavButton(navSvg(iconAuditNotes), 'Audit Logs', 'audit')}
+        ${sidebarNavButton(navSvg(iconCompliance), 'Compliance Dashboard', 'compliance')}
+        ${sidebarNavButton(navSvg(iconSettings), 'Settings', 'settings')}
       </nav>
       <div class="sidebar-footer">
         <nav class="nav-footer" aria-label="Secondary">
-          ${item(navSvg(iconContactUs), 'Contact Us', 'contact')}
-          ${item(navSvg(iconDocumentation), 'Documentation', 'docs')}
+          ${sidebarNavButton(navSvg(iconContactUs), 'Contact Us', 'contact')}
+          ${sidebarNavButton(navSvg(iconDocumentation), 'Documentation', 'docs')}
         </nav>
         <div class="legal">
           <span class="legal-link">Changelog</span>
