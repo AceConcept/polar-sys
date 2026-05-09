@@ -101,12 +101,12 @@ function renderListRowHtml(c, dbIcon) {
           <p class="anomaly-list-row__desc">${c.body}</p>
         </div>
         <div class="anomaly-list-row__aside">
+          <span class="anomaly-list-row__scan">Last Scan ${c.scan}</span>
           <div class="anomaly-list-row__tags">
             <span class="pill-id">#${c.id}</span>
             <span class="severity ${sevClass(c.severity)}"><span class="severity-dot" aria-hidden="true"></span>${sevLabel(c.severity)}</span>
             <span class="db-pill">${dbIcon}<span class="db-pill-host">${c.host}</span></span>
           </div>
-          <span class="anomaly-list-row__scan">Last Scan ${c.scan}</span>
         </div>`;
   if (c.id === '8846') {
     return `<div role="button" tabindex="0" class="anomaly-list-row anomaly-list-row--incident" data-card-id="${c.id}" aria-label="Open incident: ${c.title}">${inner}</div>`;
