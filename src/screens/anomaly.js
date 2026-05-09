@@ -130,7 +130,7 @@ export function renderAnomaly() {
         </div>
         <div class="page-title-row">
           <h1 class="page-title page-title-anomaly">Anomaly Detection</h1>
-          <span class="title-chip">Leo 2.0Y</span>
+          <button type="button" class="btn btn-dark title-chip" aria-label="Model: Leo 2.0Y">Leo 2.0Y</button>
           <button type="button" class="btn btn-dark page-title-cta"><span class="page-title-cta-icon" aria-hidden="true">${trimSvg(iconPerformScan)}</span><span>Perform Scan</span></button>
         </div>
       </div>
