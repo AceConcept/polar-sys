@@ -131,8 +131,10 @@ select {
 .brand-icon {
   width: 2.25rem;
   height: 2.25rem;
+  box-sizing: border-box;
   border-radius: 50%;
-  background: #fff;
+  background: transparent;
+  border: 0.125rem solid #fff;
 }
 
 .brand-name {
@@ -1434,6 +1436,10 @@ a.crumb-segment--link:hover {
   flex: 0 0 1.75rem;
 }
 
+.monitor-timeframe-wrap.is-open .monitor-dropdown-caret {
+  transform: rotate(180deg);
+}
+
 .monitor-timeframe-menu {
   /* Align menu tokens with .graph-dropdown-menu (incident graph) */
   --monitor-timeframe-menu-hover: #323232;
@@ -1563,7 +1569,7 @@ a.crumb-segment--link:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #ffffff;
-  background-color: #000000;
+  background-color: unset;
 }
 
 /* Tuned for ~1642x924 viewport (artboard scale ~= 0.64): preserve combo outlines and divider visibility. */
